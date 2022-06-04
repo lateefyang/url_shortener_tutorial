@@ -3,25 +3,24 @@ import json
 import os.path
 
 from flask import (
-    Flask, abort, flash, jsonify, redirect, render_template, request, session,
-    url_for)
+    Blueprint,
+    abort, flash, jsonify, redirect, render_template, request, session, url_for)
 from werkzeug.utils import secure_filename
 
 
+bp = Blueprint('urlshort', __name__)
+
+
 USER_FILES = (
-    r'D:\Projects\Tutorials\flask_tutorial\url-shortener\static\user_files')
+    r'D:\Projects\Tutorials\flask_tutorial\url-shortener\urlshort\static\user_files')
 
 
-app = Flask(__name__)
-app.secret_key = 'ajsdlkfjklmvlkawef'
-
-
-@app.route('/')
+@bp.route('/')
 def home():
     return render_template('home.html', codes=session.keys())
 
 
-@app.route('/your-url', methods=['GET', 'POST'])
+@bp.route('/your-url', methods=['GET', 'POST'])
 def your_url():
     if request.method == 'POST':
         code = request.form['code']
@@ -32,7 +31,7 @@ def your_url():
             urls = {}
         if code in urls.keys():
             flash('That short name has already been taken.')
-            return redirect(url_for('home'))
+            return redirect(url_for('urlshort.home'))
         if 'url' in request.form.keys():
             urls[code] = {'url': request.form['url']}
         else:
@@ -46,10 +45,10 @@ def your_url():
         session[code] = True
         return render_template('your_url.html', code=code)
     else:
-        return redirect(url_for('home'))
+        return redirect(url_for('urlshort.home'))
 
 
-@app.route('/<string:code>')
+@bp.route('/<string:code>')
 def redirect_to_url(code):
     try:
         with open('urls.json', 'r') as urls_file:
@@ -61,17 +60,18 @@ def redirect_to_url(code):
                     file_location = f'user_files/{urls[code]["file"]}'
                 except KeyError:
                     return abort(404)
-                return redirect(url_for('static', filename=file_location))
+                return redirect(
+                    url_for('static', filename=file_location))
     except FileNotFoundError:
         flash('There are no short names stored.')
-        return redirect(url_for('home'))
+        return redirect(url_for('urlshort.home'))
 
 
-@app.errorhandler(404)
+@bp.errorhandler(404)
 def page_not_found(error):
     return render_template('page_not_found.html'), 404
 
 
-@app.route('/api')
+@bp.route('/api')
 def session_api():
     return jsonify(list(session.keys()))
